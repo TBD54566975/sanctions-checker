@@ -1,6 +1,6 @@
 # Sanctions screener
 
-*NOTE* This is an incubating and experimental project.
+*__NOTE__ This is an incubating and experimental project.*
 
 Screen a user with `ofac` to see if they are sanctioned. 
 
