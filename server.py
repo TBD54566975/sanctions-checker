@@ -2,11 +2,36 @@ from flask import Flask, request, jsonify
 import pandas as pd
 from datetime import datetime, timedelta
 from fuzzywuzzy import process
+import time
+import requests
+from io import StringIO
 
 app = Flask(__name__)
 
-# Load the data
-df = pd.read_csv('sdn.csv')
+def load_data():
+    """Loads data from the treasury.gov URL"""
+    url = "https://www.treasury.gov/ofac/downloads/sdn.csv"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        data = StringIO(response.text)
+        return pd.read_csv(data)
+    except requests.RequestException as e:
+        print(f"Error fetching data: {e}")
+        return None
+
+df = load_data()  # Load the data the first time
+
+def periodic_data_update():
+    """Periodically fetches and updates the data every 5 minutes"""
+    while True:
+        print("Updating data...")
+        updated_df = load_data()
+        if updated_df is not None:
+            global df            
+            df = updated_df
+        time.sleep(300)  # Sleep for 5 minutes
+
 
 def perform_search(query_data, df):
     """
@@ -47,6 +72,12 @@ def screen_entity():
     data = request.json
     matched_results = perform_search(data['query'], df)
     return jsonify(matched_results)
+
+
+# You can run the periodic update in a background thread if you want the Flask server to run simultaneously.
+from threading import Thread
+Thread(target=periodic_data_update).start()
+
 
 if __name__ == '__main__':
     app.run(debug=True)

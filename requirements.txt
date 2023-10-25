@@ -1,2 +1,4 @@
 Flask
 fuzzywuzzy
+pandas
+python-Levenshtein
