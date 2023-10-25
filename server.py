@@ -6,7 +6,7 @@ from fuzzywuzzy import process
 app = Flask(__name__)
 
 # Load the data
-df = pd.read_csv('~/Downloads/sdn.csv')
+df = pd.read_csv('sdn.csv')
 
 def perform_search(query_data, df):
     """
