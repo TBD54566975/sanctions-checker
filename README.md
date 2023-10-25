@@ -1,6 +1,9 @@
-# ofac screener
+# Sanctions screener
 
-Screen a user with ofac to see if they are sanctioned.
+*NOTE* This is an incubating and experimental project.
+
+Screen a user with `ofac` to see if they are sanctioned. 
+
 
 Example: 
 
@@ -37,7 +40,8 @@ will yield results:
 python -r requirements.txt
 python server.py
 
+There is also a `go-version` that is being experimented with as an alternative (but doesn't have the same fuzzy search libraries yet as Python)
 
-# OFAC
+# Read about OFAC
 
 https://sanctionssearch.ofac.treas.gov/
