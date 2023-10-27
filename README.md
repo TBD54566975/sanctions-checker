@@ -35,6 +35,22 @@ will yield results:
 }
 ```
 
+You can also search including country (which is also a fuzzy match): 
+```sh
+curl -X POST http://127.0.0.1:5000/screen_entity \
+     -H "Content-Type: application/json" \
+     -d '{
+           "query": {
+             "min_score": 0.9,
+             "name": "Peter Griffin",
+             "country": "NPWMD",
+
+             "dob": "1935-01-01T00:00:00.00Z",
+             "dob_months_range": 12
+           }
+         }'
+```         
+
 Another example that will pick up one from the EU sanctions list:
 ```sh
 curl -X POST http://127.0.0.1:5000/screen_entity \

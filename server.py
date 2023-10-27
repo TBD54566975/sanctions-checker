@@ -19,6 +19,8 @@ def load_data():
     except requests.RequestException as e:
         print(f"Error fetching data: {e}")
         return None
+    
+    
 
 df = load_data()  # Load the data the first time
 
@@ -31,6 +33,7 @@ def periodic_data_update():
             global df            
             df = updated_df
         time.sleep(300)  # Sleep for 5 minutes
+
 
 
 def perform_search(query_data, df):
@@ -53,19 +56,29 @@ def perform_search(query_data, df):
         dob_filtered_indices = df.index.tolist()  # If DOB is not provided, consider all rows
     
     # Fuzzy search on the name
-    name_matches = process.extractBests(name, df.iloc[:, 1].dropna(), score_cutoff=min_score)
-    matched_indices = [match[2] for match in name_matches]
+    name_matches = process.extractBests(name, df.iloc[:, 1].dropna(), score_cutoff=min_score, limit=1000)
+    matched_name_indices = [match[2] for match in name_matches]
     
-    # Get the intersection of the two lists
-    final_matched_indices = list(set(matched_indices) & set(dob_filtered_indices))
+    # Fuzzy search on the country if provided
+    if 'country' in query_data:
+        country_matches = process.extractBests(query_data['country'], df.iloc[:, 3].dropna(), score_cutoff=50, limit=1000)        
+        
+        matched_country_indices = [match[2] for match in country_matches]
+        
+    else:
+        matched_country_indices = df.index.tolist()  # If country is not provided, consider all rows
     
+    # Get the intersection of the three lists
+    final_matched_indices = list(set(matched_name_indices) & set(dob_filtered_indices) & set(matched_country_indices))
     # Build the results dictionary
     results = {
         "total_hits": len(final_matched_indices),
-        "hits": [{"name": df.iloc[i, 1]} for i in final_matched_indices]
+        "hits": [{"name": df.iloc[i, 1], "country": df.iloc[i, 3]} for i in final_matched_indices]
     }
     
     return results
+
+
 
 @app.route('/screen_entity', methods=['POST'])
 def screen_entity():
