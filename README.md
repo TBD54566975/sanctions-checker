@@ -35,6 +35,22 @@ will yield results:
 }
 ```
 
+Another example that will pick up one from the EU sanctions list:
+```sh
+curl -X POST http://127.0.0.1:5000/screen_entity \
+     -H "Content-Type: application/json" \
+     -d '{
+           "query": {
+             "min_score": 0.7,
+             "name": "Saddam Hussein",
+             "country": "Iraq",
+
+             "dob": "1937-01-01T00:00:00.00Z",
+             "dob_months_range": 100
+           }
+         }'
+```         
+
 # Installing and running
 
 python -r requirements.txt
