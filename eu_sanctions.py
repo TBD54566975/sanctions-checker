@@ -70,29 +70,29 @@ def periodic_data_update():
 
 def perform_search(query_data, df):
     """Function to perform the search on the dataframe based on the query_data."""
-    # Parse the query data
+    
+    # Extract query data
     name = query_data['name']
+    country = query_data['country'] if 'country' in query_data else ''
     min_score = int(float(query_data['min_score']) * 100)
     
-    # If DOB and dob_months_range are present in the query, use them for filtering
-    dob_filtered_indices = df.index.tolist()
-    if 'dob' in query_data and 'dob_months_range' in query_data:
-        dob = datetime.strptime(query_data['dob'], "%Y-%m-%dT%H:%M:%S.%f%z").replace(tzinfo=None)  # Make it offset-naive
-        dob_months_range = int(query_data['dob_months_range'])
-        dob_start = dob - timedelta(days=dob_months_range * 30)  # Approximate a month as 30 days
-        dob_end = dob + timedelta(days=dob_months_range * 30)
-        dob_filtered_indices = df[df['Birt_date'].apply(lambda x: dob_start <= pd.Timestamp(x) <= dob_end)].index.tolist()
+    # Extract date of birth and range if present
+    dob = None
+    dob_months_range = None
+    if 'dob' in query_data:        
+        dob = query_data['dob']
+        if 'dob_months_range' in query_data:
+            dob_months_range = int(query_data['dob_months_range']) * 30  # Convert to days assuming a month is 30 days
 
-    
-    # Fuzzy search on the name and filter by score
-    matched_indices = [index for index, row in df.iterrows() if fuzz.partial_ratio(name.lower(), str(row['Naal_wholename']).lower()) >= min_score and index in dob_filtered_indices]
+    # Perform the fuzzy search
+    results_df = fuzzy_search_grouped(df, name, country, dob, dob_months_range, min_score, min_score)
     
     # Build the results dictionary
     results = {
-        "total_hits": len(matched_indices),
-        "hits": [{"name": df.iloc[i]['Naal_wholename']} for i in matched_indices]
+        "total_hits": len(results_df),
+        "hits": results_df[['Combined Names', 'Most Frequent Birthdate', 'Most Frequent Country']].to_dict(orient="records")
     }
-    
+
     return results
 
 @app.route('/screen_entity', methods=['POST'])
@@ -105,5 +105,56 @@ def screen_entity():
 from threading import Thread
 Thread(target=periodic_data_update).start()
 
+
+def fuzzy_search_grouped(df, name, country, birthdate, days_range=400, name_ratio_threshold=60, country_ratio_threshold=60):
+    # Group by 'Entity_logical_id' and combine data
+    combined_names = df.groupby('Entity_logical_id')['Naal_wholename'].apply(lambda x: ' | '.join(x.dropna().unique()))
+    
+    # Take any available birthdate
+    combined_birthdates = df.groupby('Entity_logical_id')['Birt_date'].apply(lambda x: x.dropna().iloc[0] if not x.dropna().empty else None)
+    
+    # Combine countries with priority to 'Addr_country'
+    def combine_countries(row):
+        if pd.notna(row['Addr_country']):
+            return row['Addr_country']
+        return row['Birt_country']
+    
+    df['Combined_Country'] = df.apply(combine_countries, axis=1)
+    combined_countries = df.groupby('Entity_logical_id')['Combined_Country'].apply(lambda x: x.mode()[0] if not x.mode().empty else x.dropna().iloc[0] if not x.dropna().empty else None)
+
+    grouped_df = pd.DataFrame({
+        'Combined_Names': combined_names,
+        'Most_Frequent_Birthdate': combined_birthdates,
+        'Most_Frequent_Country': combined_countries
+    }).reset_index()
+
+    # Filter based on fuzzy matching of name, country, and birthdate
+    results = []
+    birthdate = datetime.strptime(birthdate, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=None)
+    start_date = birthdate - timedelta(days=days_range)
+    end_date = birthdate + timedelta(days=days_range)
+    
+    for index, row in grouped_df.iterrows():
+        name_ratio = fuzz.partial_ratio(name.lower(), str(row['Combined_Names']).lower())
+        country_ratio = fuzz.ratio(country.lower(), str(row['Most_Frequent_Country']).lower())
+        
+        # Check if the birthdate is within the specified range
+        row_birthdate = row['Most_Frequent_Birthdate']
+        if pd.notna(row_birthdate):
+            row_birthdate = pd.Timestamp(row_birthdate).to_pydatetime()  # Convert to datetime object
+            birthdate_match = start_date <= row_birthdate <= end_date
+        else:
+            birthdate_match = False
+        
+        # If name and country ratios are above the given thresholds, and birthdate matches, consider it a match
+        if name_ratio > name_ratio_threshold and country_ratio > country_ratio_threshold and birthdate_match:
+            results.append((index, row['Combined_Names'], row['Most_Frequent_Birthdate'], row['Most_Frequent_Country'], name_ratio, country_ratio))
+    
+    # Convert results into a DataFrame for easier viewing
+    results_df = pd.DataFrame(results, columns=['Index', 'Combined Names', 'Most Frequent Birthdate', 'Most Frequent Country', 'Name Match Ratio', 'Country Match Ratio'])
+    return results_df
+
 if __name__ == '__main__':
     app.run(debug=True)
+
+
