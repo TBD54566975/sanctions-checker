@@ -57,6 +57,7 @@ def load_data():
 
 
 df = load_data()  # Load the data the first time
+print("loaded data for eu sanctions")
 
 def periodic_data_update():
     """Periodically fetches and updates the data every 5 minutes"""
@@ -68,7 +69,7 @@ def periodic_data_update():
             df = updated_df
         time.sleep(300)  # Sleep for 5 minutes
 
-def perform_search(query_data, df):
+def perform_search(query_data, df=df):
     """Function to perform the search on the dataframe based on the query_data."""
     
     # Extract query data
@@ -95,11 +96,6 @@ def perform_search(query_data, df):
 
     return results
 
-@app.route('/screen_entity', methods=['POST'])
-def screen_entity():
-    data = request.json
-    matched_results = perform_search(data['query'], df)
-    return jsonify(matched_results)
 
 # You can run the periodic update in a background thread if you want the Flask server to run simultaneously.
 from threading import Thread
@@ -154,7 +150,5 @@ def fuzzy_search_grouped(df, name, country, birthdate, days_range=400, name_rati
     results_df = pd.DataFrame(results, columns=['Index', 'Combined Names', 'Most Frequent Birthdate', 'Most Frequent Country', 'Name Match Ratio', 'Country Match Ratio'])
     return results_df
 
-if __name__ == '__main__':
-    app.run(debug=True)
 
 
