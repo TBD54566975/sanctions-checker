@@ -2,6 +2,8 @@
 
 *__NOTE__ This is an incubating and experimental project.*
 
+ARCHIVED: This is achived in favour of https://github.com/TBD54566975/super-simple-sanctions - which is based on an existing open source project. 
+
 Screen a user with `ofac` to see if they are sanctioned. 
 
 
